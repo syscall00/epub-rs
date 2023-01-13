@@ -350,6 +350,18 @@ impl<R: Read + Seek> EpubDoc<R> {
         Err(anyhow!("path not found"))
     }
 
+
+    /// Modify a resource in the archive and save the archive on the disk.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the epub archive does not have the page to modify or if
+    /// there is an error during writing of zip file.
+    pub fn modify_file<P: AsRef<Path>>(&mut self, res : P, new_epub: &File, new_content: &str) -> Result<(), Error> {
+        self.archive.modify_entry(new_epub, res, new_content)
+
+    }
+
     /// Returns the current chapter content
     ///
     /// The current follows the epub spine order. You can modify the current

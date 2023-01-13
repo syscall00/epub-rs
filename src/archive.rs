@@ -97,4 +97,47 @@ impl<R: Read + Seek> EpubArchive<R> {
         let content = self.get_entry("META-INF/container.xml")?;
         Ok(content)
     }
+
+    /// Modify a resource in the archive and save the archive on the disk.
+    /// This method can be called either from EpubArchive or EpubDoc
+    /// 
+    /// # Errors
+    ///
+    /// Returns an error if the epub archive does not have the page to modify or if
+    /// there is an error during writing of zip file.
+    pub fn modify_entry<P: AsRef<Path>>(&mut self, path : &File, page_to_modify : P,  new_content: &str) -> Result<(), Error> {
+
+        let page_to_modify = page_to_modify.as_ref().display().to_string();
+
+        // check if the file exists
+        match self.zip.by_name(&page_to_modify) {
+            Ok(_) => {}
+            Err(zip::result::ZipError::FileNotFound) => {
+                return Err(Error::msg("File not found"));
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
+        
+        // create an empty zip archive
+        let mut zip_writer = zip::ZipWriter::new(path);
+
+        for i in 0..self.zip.len() {
+            let file = self.zip.by_index(i).unwrap();
+
+            
+            if file.name() == page_to_modify {
+                zip_writer.start_file(file.name(), zip::write::FileOptions::default())?;
+                std::io::Write::write_all(&mut zip_writer, new_content.as_bytes())?;
+            }
+            
+            else {
+                zip_writer.raw_copy_file(file).unwrap();
+            }
+        }
+
+        zip_writer.finish().unwrap();
+        Ok(())
+    }
 }
